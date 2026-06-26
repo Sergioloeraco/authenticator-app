@@ -1,0 +1,7 @@
+{
+  "name": "authenticator-app",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
