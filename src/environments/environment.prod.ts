@@ -1,3 +1,4 @@
 export const environment = {
-  production: true
+  production: true,
+  apiUrl: 'https://TU-PROYECTO.vercel.app',  // ← Reemplazar con tu URL real
 };

@@ -1,0 +1,12 @@
+{
+  "name": "authenticator-api",
+  "version": "1.0.0",
+  "description": "Backend para Authenticator QR - Ionic/Angular",
+  "main": "api/index.js",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.2",
+    "mongodb": "^6.21.0"
+  }
+}

@@ -1,20 +1,256 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
+<ion-header class="ion-no-border">
+  <ion-toolbar class="app-toolbar">
     <ion-title>
-      Blank
+      <ion-icon name="shield-checkmark-outline"></ion-icon>
+      Authenticator
     </ion-title>
+    <ion-buttons slot="end">
+      <button class="nav-btn" [class.active]="isWeb" (click)="switchView('web')">
+        <ion-icon name="desktop-outline"></ion-icon> WEB
+      </button>
+      <button class="nav-btn" [class.active]="!isWeb" (click)="switchView('mobile')">
+        <ion-icon name="phone-portrait-outline"></ion-icon> MÓVIL
+      </button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="rainbow-content">
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
-  </div>
+  <!-- ═══════════════════════════════════════════════════════════════ WEB VIEW -->
+  <div *ngIf="isWeb" class="web-view">
+
+    <!-- Barra de estado API -->
+    <div class="status-bar">
+      <ion-icon name="checkmark-circle" color="success"></ion-icon>
+      <span class="connected-label">API conectada</span>
+      <span class="db-info">MongoDB Atlas &nbsp;|&nbsp; PIN 6 dígitos &nbsp;|&nbsp; Ventana 10 min</span>
+    </div>
+
+    <div class="main-grid">
+
+      <!-- ─── Tarjeta: Formulario + QR ─── -->
+      <ion-card class="glass-card form-card">
+        <ion-card-header>
+          <div class="card-icon-wrap">
+            <ion-icon name="shield-checkmark" color="success"></ion-icon>
+          </div>
+          <div>
+            <p class="card-sub">Portal Web</p>
+            <ion-card-title>Alta de autenticador</ion-card-title>
+          </div>
+        </ion-card-header>
+
+        <ion-card-content>
+          <!-- Servicio -->
+          <ion-item class="form-item">
+            <ion-label position="floating">Servicio</ion-label>
+            <ion-input [(ngModel)]="service" placeholder="Servicio Normal"></ion-input>
+          </ion-item>
+
+          <!-- Correo -->
+          <ion-item class="form-item mt-1">
+            <ion-label position="floating">Cuenta</ion-label>
+            <ion-input
+              [(ngModel)]="email"
+              type="email"
+              placeholder="usuario@empresa.com">
+            </ion-input>
+          </ion-item>
+
+          <!-- Botón generar QR -->
+          <ion-button
+            expand="block"
+            class="generate-btn mt-2"
+            (click)="generateQR()"
+            [disabled]="!email.trim() || isGenerating">
+            <ion-icon name="qr-code-outline" slot="start"></ion-icon>
+            {{ isGenerating ? 'Generando...' : 'GENERAR QR' }}
+          </ion-button>
+
+          <!-- ─── Área QR ─── -->
+          <div *ngIf="qrDataUrl" class="qr-area">
+            <img [src]="qrDataUrl" alt="Código QR" class="qr-img" />
+
+            <!-- Verificar PIN -->
+            <div class="verify-area">
+              <p class="verify-hint">
+                <ion-icon name="phone-portrait-outline"></ion-icon>
+                Escanea el QR con la app móvil y escribe el código de 6 dígitos
+              </p>
+
+              <!-- Visualización de dígitos del PIN -->
+              <div class="pin-boxes">
+                <div
+                  *ngFor="let d of pinDigits; let i = index"
+                  class="pin-box"
+                  [class.filled]="d.trim()">
+                  {{ d.trim() }}
+                </div>
+              </div>
+
+              <ion-item class="pin-input-item">
+                <ion-label position="floating">Código de verificación</ion-label>
+                <ion-input
+                  [(ngModel)]="pinInput"
+                  type="number"
+                  maxlength="6"
+                  placeholder="______"
+                  (ionInput)="pinInput = pinInput.slice(0,6)">
+                </ion-input>
+              </ion-item>
+
+              <ion-button
+                expand="block"
+                class="verify-btn"
+                (click)="verifyPin()"
+                [disabled]="pinInput.length < 6">
+                <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
+                VERIFICAR CÓDIGO
+              </ion-button>
+
+              <div *ngIf="verifyMsg" class="verify-msg" [class.ok]="verifySuccess" [class.fail]="!verifySuccess">
+                <ion-icon [name]="verifySuccess ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+                {{ verifyMsg }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Placeholder sin QR -->
+          <div *ngIf="!qrDataUrl" class="qr-placeholder">
+            <ion-icon name="qr-code-outline"></ion-icon>
+            <p>QR listo al crear el alta</p>
+            <small>La app móvil puede escanearlo y generar el código localmente.</small>
+          </div>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- ─── Tarjeta: Lista de solicitudes ─── -->
+      <ion-card class="glass-card requests-card">
+        <ion-card-header>
+          <ion-card-subtitle>Registros</ion-card-subtitle>
+          <ion-card-title>Altas recientes</ion-card-title>
+        </ion-card-header>
+
+        <ion-card-content>
+          <div *ngFor="let req of requests" class="req-row">
+            <div class="req-info">
+              <span class="req-service">{{ req.service }}</span>
+              <span class="req-email">{{ req.email }}</span>
+              <span class="req-date">{{ fmtDate(req.createdAt) }}</span>
+            </div>
+            <div class="req-actions">
+              <ion-badge [color]="statusColor(req.status)" class="status-badge">
+                {{ statusLabel(req.status) }}
+              </ion-badge>
+              <button
+                class="revoke-btn"
+                [disabled]="req.status !== 'pendiente'"
+                (click)="revokeRequest(req.id)"
+                title="Revocar solicitud">
+                <ion-icon name="trash-outline"></ion-icon>
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="requests.length === 0" class="empty-state">
+            <ion-icon name="list-outline"></ion-icon>
+            <p>Sin registros aún</p>
+          </div>
+        </ion-card-content>
+      </ion-card>
+
+    </div><!-- /main-grid -->
+  </div><!-- /web-view -->
+
+
+  <!-- ══════════════════════════════════════════════════════════ MOBILE VIEW -->
+  <div *ngIf="!isWeb" class="mobile-view">
+    <div class="phone-frame">
+
+      <!-- Header del teléfono -->
+      <div class="phone-header">
+        <span class="phone-sub">Secure TOTP</span>
+        <span class="phone-title">
+          {{ isScanning ? 'Escaneando...' : scannedPin ? 'Código generado' : 'Bloqueado' }}
+        </span>
+      </div>
+
+      <!-- Cuerpo del teléfono -->
+      <div class="phone-body">
+
+        <!-- Estado: Bienvenida / esperando escaneo -->
+        <ng-container *ngIf="!scannedPin && !isScanning && !showManual">
+          <ion-icon name="apps-outline" class="welcome-icon"></ion-icon>
+          <h3 class="welcome-title">Bienvenido</h3>
+          <p class="welcome-sub">
+            Escanea el código QR generado en el portal web para obtener tu código de verificación.
+          </p>
+
+          <div *ngIf="scanError" class="scan-error">
+            <ion-icon name="warning-outline"></ion-icon>
+            {{ scanError }}
+          </div>
+
+          <ion-button expand="block" class="scan-cta" (click)="scanQR()">
+            <ion-icon name="scan-outline" slot="start"></ion-icon>
+            Escanear código QR
+          </ion-button>
+        </ng-container>
+
+        <!-- Estado: Escaneando -->
+        <ng-container *ngIf="isScanning">
+          <div class="scanning-anim">
+            <ion-spinner name="crescent" color="primary"></ion-spinner>
+          </div>
+          <p class="scanning-text">Enfoca el código QR con la cámara</p>
+          <ion-button fill="outline" size="small" color="light" (click)="cancelScan()">
+            Cancelar
+          </ion-button>
+        </ng-container>
+
+        <!-- Fallback: Entrada manual (browser / sin cámara) -->
+        <ng-container *ngIf="showManual && !scannedPin">
+          <ion-icon name="keypad-outline" class="welcome-icon" color="primary"></ion-icon>
+          <p class="welcome-sub">Ingresa el ID de la solicitud manualmente (modo web):</p>
+          <ion-item class="manual-input">
+            <ion-label position="floating">ID de solicitud</ion-label>
+            <ion-input [(ngModel)]="manualId" placeholder="Pega el ID aquí"></ion-input>
+          </ion-item>
+          <ion-button expand="block" class="scan-cta" (click)="submitManualId()" [disabled]="!manualId.trim()">
+            Obtener código
+          </ion-button>
+          <ion-button expand="block" fill="clear" color="light" size="small" (click)="showManual = false">
+            Cancelar
+          </ion-button>
+        </ng-container>
+
+        <!-- Estado: PIN recibido → mostrarlo al usuario -->
+        <ng-container *ngIf="scannedPin && !isScanning">
+          <div class="scan-result">
+            <small class="scan-label">Escaneo</small>
+            <h3 class="scan-service">{{ scannedService }}</h3>
+            <p class="scan-email">{{ scannedEmail }}</p>
+
+            <!-- Dígitos del PIN -->
+            <div class="pin-row">
+              <div *ngFor="let d of scannedPin.split('')" class="pin-cell">{{ d }}</div>
+            </div>
+
+            <p class="pin-instruction">
+              <ion-icon name="arrow-back-circle-outline"></ion-icon>
+              Ingresa este código en el portal web
+            </p>
+
+            <ion-button expand="block" fill="outline" color="light" size="small" (click)="resetMobile()">
+              <ion-icon name="refresh-outline" slot="start"></ion-icon>
+              Escanear otro código
+            </ion-button>
+          </div>
+        </ng-container>
+
+      </div><!-- /phone-body -->
+    </div><!-- /phone-frame -->
+  </div><!-- /mobile-view -->
+
 </ion-content>
