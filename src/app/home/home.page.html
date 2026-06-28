@@ -76,7 +76,7 @@
             <div class="verify-area">
               <p class="verify-hint">
                 <ion-icon name="phone-portrait-outline"></ion-icon>
-                Escanea el QR con la app móvil y escribe el código de 6 dígitos
+                Escanea el QR con la app movil y escribe el codigo de 6 digitos
               </p>
 
               <!-- Visualización de dígitos del PIN -->
@@ -89,22 +89,11 @@
                 </div>
               </div>
 
-              <ion-item class="pin-input-item">
-                <ion-label position="floating">Código de verificación</ion-label>
-                <ion-input
-                  [(ngModel)]="pinInput"
-                  type="number"
-                  maxlength="6"
-                  placeholder="______"
-                  (ionInput)="pinInput = pinInput.slice(0,6)">
-                </ion-input>
-              </ion-item>
-
               <ion-button
                 expand="block"
                 class="verify-btn"
                 (click)="verifyPin()"
-                [disabled]="pinInput.length < 6">
+                [disabled]="!canVerifyPin">
                 <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
                 VERIFICAR CÓDIGO
               </ion-button>
@@ -120,7 +109,7 @@
           <div *ngIf="!qrDataUrl" class="qr-placeholder">
             <ion-icon name="qr-code-outline"></ion-icon>
             <p>QR listo al crear el alta</p>
-            <small>La app móvil puede escanearlo y generar el código localmente.</small>
+            <small>El QR incluye un enlace con el ID de solicitud.</small>
           </div>
         </ion-card-content>
       </ion-card>
@@ -212,10 +201,10 @@
         <!-- Fallback: Entrada manual (browser / sin cámara) -->
         <ng-container *ngIf="showManual && !scannedPin">
           <ion-icon name="keypad-outline" class="welcome-icon" color="primary"></ion-icon>
-          <p class="welcome-sub">Ingresa el ID de la solicitud manualmente (modo web):</p>
+          <p class="welcome-sub">Ingresa el ID o pega el enlace del QR (modo web):</p>
           <ion-item class="manual-input">
             <ion-label position="floating">ID de solicitud</ion-label>
-            <ion-input [(ngModel)]="manualId" placeholder="Pega el ID aquí"></ion-input>
+            <ion-input [(ngModel)]="manualId" placeholder="Pega el ID o enlace aqui"></ion-input>
           </ion-item>
           <ion-button expand="block" class="scan-cta" (click)="submitManualId()" [disabled]="!manualId.trim()">
             Obtener código

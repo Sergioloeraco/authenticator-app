@@ -26,8 +26,22 @@ async function getDb() {
 }
 
 function mapDoc(doc) {
-  const { _id, ...rest } = doc;
-  return { id: _id.toString(), ...rest };
+  const { _id, pin, ...rest } = doc;
+  const mapped = { id: _id.toString(), ...rest };
+
+  if (doc.scannedAt && doc.status === 'pendiente') {
+    mapped.pin = pin;
+  }
+
+  return mapped;
+}
+
+function toRequestObjectId(id) {
+  if (!/^[a-f0-9]{24}$/i.test(String(id))) {
+    return null;
+  }
+
+  return new ObjectId(id);
 }
 
 async function generateUniquePin(col) {
@@ -106,9 +120,14 @@ app.get('/api/requests', async (_req, res) => {
 
 app.get('/api/scan/:id', async (req, res) => {
   try {
+    const requestId = toRequestObjectId(req.params.id);
+    if (!requestId) {
+      return res.status(400).json({ error: 'ID de solicitud invalido' });
+    }
+
     const db = await getDb();
     const doc = await db.collection('requests').findOne({
-      _id: new ObjectId(req.params.id),
+      _id: requestId,
     });
 
     if (!doc) {
@@ -119,11 +138,18 @@ app.get('/api/scan/:id', async (req, res) => {
       return res.status(400).json({ error: 'Solicitud ya procesada', status: doc.status });
     }
 
+    const scannedAt = new Date();
+    await db.collection('requests').updateOne(
+      { _id: requestId },
+      { $set: { scannedAt } }
+    );
+
     return res.json({
       id: doc._id.toString(),
       service: doc.service,
       email: doc.email,
       pin: doc.pin,
+      scannedAt,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -138,10 +164,15 @@ app.post('/api/verify', async (req, res) => {
       return res.status(400).json({ error: 'Faltan datos' });
     }
 
+    const requestId = toRequestObjectId(id);
+    if (!requestId) {
+      return res.status(400).json({ error: 'ID de solicitud invalido' });
+    }
+
     const db = await getDb();
     const col = db.collection('requests');
     const doc = await col.findOne({
-      _id: new ObjectId(id),
+      _id: requestId,
       status: 'pendiente',
     });
 
@@ -154,7 +185,7 @@ app.post('/api/verify', async (req, res) => {
     }
 
     await col.updateOne(
-      { _id: new ObjectId(id) },
+      { _id: requestId },
       { $set: { status: 'aprobado', approvedAt: new Date() } }
     );
 
@@ -166,9 +197,14 @@ app.post('/api/verify', async (req, res) => {
 
 app.delete('/api/revoke/:id', async (req, res) => {
   try {
+    const requestId = toRequestObjectId(req.params.id);
+    if (!requestId) {
+      return res.status(400).json({ error: 'ID de solicitud invalido' });
+    }
+
     const db = await getDb();
     await db.collection('requests').updateOne(
-      { _id: new ObjectId(req.params.id) },
+      { _id: requestId },
       { $set: { status: 'cancelado', updatedAt: new Date() } }
     );
 
@@ -180,9 +216,14 @@ app.delete('/api/revoke/:id', async (req, res) => {
 
 app.get('/api/status/:id', async (req, res) => {
   try {
+    const requestId = toRequestObjectId(req.params.id);
+    if (!requestId) {
+      return res.status(400).json({ error: 'ID de solicitud invalido' });
+    }
+
     const db = await getDb();
     const doc = await db.collection('requests').findOne(
-      { _id: new ObjectId(req.params.id) },
+      { _id: requestId },
       { projection: { status: 1 } }
     );
 

@@ -13,8 +13,8 @@ Portal web             App movil / vista movil          API Express + MongoDB
 ## Flujo principal
 
 1. En la vista WEB se ingresa correo y servicio.
-2. La app llama a `POST /api/generate` y genera un QR con el ID de solicitud.
-3. En la vista MOVIL se escanea el QR o se pega el ID manualmente en navegador.
+2. La app llama a `POST /api/generate` y genera un QR con un enlace de la app que incluye `scanId`.
+3. En la vista MOVIL se escanea el QR, se abre el enlace, o se pega el ID/enlace manualmente en navegador.
 4. La API devuelve el PIN de 6 digitos.
 5. En la vista WEB se escribe el PIN y se verifica la solicitud.
 6. La solicitud pasa a estado `aprobado`.
@@ -127,7 +127,7 @@ Abre:
 http://localhost:4200
 ```
 
-En desktop inicia en vista WEB. Puedes cambiar a MOVIL con el boton de la barra superior. En navegador, la vista MOVIL usa entrada manual del ID porque no hay camara nativa de Capacitor.
+En desktop inicia en vista WEB. Puedes cambiar a MOVIL con el boton de la barra superior. En navegador, la vista MOVIL usa entrada manual del ID o enlace porque no hay camara nativa de Capacitor.
 
 ## Comprobar que funciona
 
@@ -162,7 +162,7 @@ Invoke-RestMethod http://localhost:3000/api/requests
 4. Copia el `id` de la primera solicitud.
 5. Cambia a MOVIL.
 6. Pulsa `Escanear codigo QR`.
-7. En navegador aparecera entrada manual: pega el `id`.
+7. En navegador aparecera entrada manual: pega el `id` o el enlace completo del QR.
 8. La vista MOVIL debe mostrar un PIN de 6 digitos.
 9. Vuelve a WEB, escribe ese PIN y pulsa `VERIFICAR CODIGO`.
 10. La solicitud debe cambiar a `Aprobado`.
@@ -279,6 +279,6 @@ db.requests.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 - `MONGODB_URI no esta definida`: falta configurar la variable antes de iniciar la API.
 - Error de `app.module.ts` o `home.module.ts` en VS Code: son diagnosticos antiguos del editor; esos archivos ya no existen. Reinicia `Angular Language Server`, `TypeScript Server` y recarga la ventana.
-- El boton de escaneo en navegador pide ID manual: es normal; la camara nativa se prueba en Android/iOS con Capacitor.
+- El boton de escaneo en navegador pide ID/enlace manual: es normal; la camara nativa se prueba en Android/iOS con Capacitor. Si usas la camara externa del telefono, el enlace del QR debe apuntar a una URL accesible desde ese telefono, no a `localhost` de tu computadora.
 - La API responde `/api/status`, pero generar QR falla: revisa conexion y permisos de MongoDB Atlas.
 

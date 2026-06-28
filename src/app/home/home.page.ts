@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { Subscription, interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -46,8 +47,9 @@ export class HomePage implements OnInit, OnDestroy {
   private pollSub?: Subscription;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private Scanner: any = null;
+  private readonly requestIdPattern = /^[a-f0-9]{24}$/i;
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private route: ActivatedRoute) {}
 
   async ngOnInit() {
     // Cargar BarcodeScanner solo si estamos en nativo
@@ -58,6 +60,11 @@ export class HomePage implements OnInit, OnDestroy {
       } catch {
         console.warn('BarcodeScanner no disponible');
       }
+    }
+
+    const scanId = this.route.snapshot.queryParamMap.get('scanId');
+    if (scanId) {
+      this.handleScannedContent(scanId);
     }
 
     // Arrancar carga de solicitudes y polling
@@ -89,8 +96,9 @@ export class HomePage implements OnInit, OnDestroy {
     this.authService.generate(this.email.trim(), this.service).subscribe({
       next: async (res) => {
         this.currentRequestId = res.id;
-        // El QR codifica Ãºnicamente el ID de la solicitud
-        this.qrDataUrl = await QRCode.toDataURL(res.qrData ?? res.id, {
+        // El QR codifica un enlace de la app con el ID de la solicitud
+        const requestId = this.extractRequestId(res.qrData ?? res.id) || res.id;
+        this.qrDataUrl = await QRCode.toDataURL(this.buildQrPayload(requestId), {
           width: 260,
           margin: 2,
           color: { dark: '#000000', light: '#ffffff' },
@@ -108,7 +116,7 @@ export class HomePage implements OnInit, OnDestroy {
   loadRequests() {
     return new Promise<void>((resolve) => {
       this.authService.getRequests().subscribe({
-        next: (reqs) => { this.requests = reqs; resolve(); },
+        next: (reqs) => { this.syncRequests(reqs); resolve(); },
         error: () => resolve(),
       });
     });
@@ -117,12 +125,15 @@ export class HomePage implements OnInit, OnDestroy {
   startPolling() {
     this.pollSub = interval(2500)
       .pipe(switchMap(() => this.authService.getRequests()))
-      .subscribe({ next: (reqs) => { this.requests = reqs; } });
+      .subscribe({ next: (reqs) => { this.syncRequests(reqs); } });
   }
 
   verifyPin() {
-    if (!this.currentRequestId || this.pinInput.length < 6) return;
-    this.authService.verify(this.currentRequestId, this.pinInput).subscribe({
+    const pin = this.normalizePin(this.pinInput);
+    this.pinInput = pin;
+
+    if (!this.currentRequestId || pin.length < 6) return;
+    this.authService.verify(this.currentRequestId, pin).subscribe({
       next: () => {
         this.verifyMsg = 'âœ“ RecuperaciÃ³n aprobada correctamente';
         this.verifySuccess = true;
@@ -165,7 +176,75 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   get pinDigits(): string[] {
-    return this.pinInput.padEnd(6, ' ').split('').slice(0, 6);
+    return this.normalizePin(this.pinInput).padEnd(6, ' ').split('').slice(0, 6);
+  }
+
+  get canVerifyPin(): boolean {
+    return this.normalizePin(this.pinInput).length === 6;
+  }
+
+  private syncRequests(reqs: QrRequest[]) {
+    this.requests = reqs;
+    this.syncCurrentPinFromRequests();
+  }
+
+  private syncCurrentPinFromRequests() {
+    if (!this.currentRequestId || this.verifySuccess) return;
+
+    const currentRequest = this.requests.find((req) => req.id === this.currentRequestId);
+    if (!currentRequest || currentRequest.status !== 'pendiente') return;
+
+    const scannedPin = this.normalizePin(currentRequest.pin);
+    if (scannedPin.length !== 6 || this.pinInput === scannedPin) return;
+
+    this.pinInput = scannedPin;
+    this.verifyMsg = '';
+    this.verifySuccess = false;
+  }
+
+  private normalizePin(pin?: string): string {
+    return String(pin ?? '').replace(/\D/g, '').slice(0, 6);
+  }
+
+  private buildQrPayload(id: string): string {
+    const url = new URL('/home', window.location.origin);
+    url.searchParams.set('scanId', id);
+    return url.toString();
+  }
+
+  private extractRequestId(content: string): string {
+    const value = content.trim();
+    if (!value) return '';
+
+    const idFromUrl = this.extractRequestIdFromUrl(value);
+    if (idFromUrl) return idFromUrl;
+
+    return this.requestIdPattern.test(value) ? value : '';
+  }
+
+  private extractRequestIdFromUrl(value: string): string {
+    try {
+      const url = new URL(value, window.location.origin);
+      const scanId = url.searchParams.get('scanId') ?? url.searchParams.get('id') ?? '';
+      return this.requestIdPattern.test(scanId) ? scanId : '';
+    } catch {
+      return '';
+    }
+  }
+
+  private handleScannedContent(content: string) {
+    const id = this.extractRequestId(content);
+    this.currentView = 'mobile';
+    this.scannedPin = '';
+    this.showManual = false;
+
+    if (!id) {
+      this.scanError = 'QR no valido para esta app. Genera uno nuevo desde el portal.';
+      return;
+    }
+
+    this.scanError = '';
+    this.fetchPinFromId(id);
   }
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -190,13 +269,15 @@ export class HomePage implements OnInit, OnDestroy {
       this.scannedPin = '';
       this.scanError = '';
 
-      const result = await this.Scanner.scan();
+      const result = await this.Scanner.scan({ formats: ['QR_CODE'] });
       this.isScanning = false;
 
       const barcode = result.barcodes?.[0];
       const content = barcode?.rawValue ?? barcode?.displayValue;
       if (content) {
-        await this.fetchPinFromId(content.trim());
+        this.handleScannedContent(content);
+      } else {
+        this.scanError = 'No se pudo leer el QR. Intenta enfocarlo de nuevo.';
       }
     } catch (err: unknown) {
       this.isScanning = false;
@@ -205,8 +286,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
   submitManualId() {
     if (!this.manualId.trim()) return;
-    this.showManual = false;
-    this.fetchPinFromId(this.manualId.trim());
+    this.handleScannedContent(this.manualId.trim());
     this.manualId = '';
   }
 
