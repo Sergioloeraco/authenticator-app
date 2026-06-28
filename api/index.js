@@ -63,6 +63,7 @@ app.get('/api/status', (_req, res) => {
 app.post('/api/generate', async (req, res) => {
   try {
     const { email, service = 'Servicio Normal' } = req.body;
+    const serviceName = String(service).trim() || 'Servicio Normal';
 
     if (!email) {
       return res.status(400).json({ error: 'El correo es requerido' });
@@ -79,7 +80,7 @@ app.post('/api/generate', async (req, res) => {
     const pin = await generateUniquePin(col);
 
     const doc = {
-      service,
+      service: serviceName,
       email,
       pin,
       status: 'pendiente',
@@ -91,7 +92,7 @@ app.post('/api/generate', async (req, res) => {
 
     return res.json({
       id: result.insertedId.toString(),
-      service,
+      service: serviceName,
       email,
       status: 'pendiente',
       createdAt: doc.createdAt,
@@ -113,6 +114,17 @@ app.get('/api/requests', async (_req, res) => {
       .toArray();
 
     return res.json(docs.map(mapDoc));
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/requests', async (_req, res) => {
+  try {
+    const db = await getDb();
+    const result = await db.collection('requests').deleteMany({});
+
+    return res.json({ success: true, deletedCount: result.deletedCount });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

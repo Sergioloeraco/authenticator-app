@@ -24,7 +24,7 @@
     <div class="status-bar">
       <ion-icon name="checkmark-circle" color="success"></ion-icon>
       <span class="connected-label">API conectada</span>
-      <span class="db-info">MongoDB Atlas &nbsp;|&nbsp; PIN 6 dígitos &nbsp;|&nbsp; Ventana 10 min</span>
+      <span class="db-info">MongoDB Atlas &nbsp;|&nbsp; Pin 6 digitos &nbsp;|&nbsp; Ventana 10 min</span>
     </div>
 
     <div class="main-grid">
@@ -44,13 +44,16 @@
         <ion-card-content>
           <!-- Servicio -->
           <ion-item class="form-item">
-            <ion-label position="floating">Servicio</ion-label>
-            <ion-input [(ngModel)]="service" placeholder="Servicio Normal"></ion-input>
+            <ion-label position="stacked">Servicio</ion-label>
+            <ion-input
+              [(ngModel)]="service"
+              placeholder="Ej. Servicio Normal">
+            </ion-input>
           </ion-item>
 
           <!-- Correo -->
           <ion-item class="form-item mt-1">
-            <ion-label position="floating">Cuenta</ion-label>
+            <ion-label position="stacked">Cuenta</ion-label>
             <ion-input
               [(ngModel)]="email"
               type="email"
@@ -76,7 +79,7 @@
             <div class="verify-area">
               <p class="verify-hint">
                 <ion-icon name="phone-portrait-outline"></ion-icon>
-                Escanea el QR con la app movil y escribe el codigo de 6 digitos
+                Escanea el QR con la app móvil y escribe el código de 6 dígitos
               </p>
 
               <!-- Visualización de dígitos del PIN -->
@@ -116,9 +119,20 @@
 
       <!-- ─── Tarjeta: Lista de solicitudes ─── -->
       <ion-card class="glass-card requests-card">
-        <ion-card-header>
-          <ion-card-subtitle>Registros</ion-card-subtitle>
-          <ion-card-title>Altas recientes</ion-card-title>
+        <ion-card-header class="requests-header">
+          <div>
+            <ion-card-subtitle>Registros</ion-card-subtitle>
+            <ion-card-title>Altas recientes</ion-card-title>
+          </div>
+          <button
+            class="clear-history-btn"
+            type="button"
+            title="Limpiar historial"
+            [disabled]="requests.length === 0 || isClearingHistory"
+            (click)="clearHistory()">
+            <ion-icon name="trash-outline"></ion-icon>
+            <span>{{ isClearingHistory ? 'Limpiando...' : 'Limpiar' }}</span>
+          </button>
         </ion-card-header>
 
         <ion-card-content>
@@ -134,7 +148,7 @@
               </ion-badge>
               <button
                 class="revoke-btn"
-                [disabled]="req.status !== 'pendiente'"
+                [disabled]="req.status === 'cancelado'"
                 (click)="revokeRequest(req.id)"
                 title="Revocar solicitud">
                 <ion-icon name="trash-outline"></ion-icon>
@@ -204,7 +218,7 @@
           <p class="welcome-sub">Ingresa el ID o pega el enlace del QR (modo web):</p>
           <ion-item class="manual-input">
             <ion-label position="floating">ID de solicitud</ion-label>
-            <ion-input [(ngModel)]="manualId" placeholder="Pega el ID o enlace aqui"></ion-input>
+            <ion-input [(ngModel)]="manualId" placeholder="Pega el ID o enlace aquí"></ion-input>
           </ion-item>
           <ion-button expand="block" class="scan-cta" (click)="submitManualId()" [disabled]="!manualId.trim()">
             Obtener código
@@ -243,3 +257,5 @@
   </div><!-- /mobile-view -->
 
 </ion-content>
+
+

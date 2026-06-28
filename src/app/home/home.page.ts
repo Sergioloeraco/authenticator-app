@@ -18,13 +18,13 @@ import { AuthService, QrRequest } from '../services/auth.service';
 })
 export class HomePage implements OnInit, OnDestroy {
 
-  // â”€â”€ Vista activa (toggle WEB / MÃ“VIL) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Vista activa (toggle WEB / MÓVIL) ───────────────────────────────────────
   currentView: 'web' | 'mobile' = Capacitor.isNativePlatform() ? 'mobile' : 'web';
   get isWeb() { return this.currentView === 'web'; }
 
-  // â”€â”€ Estado WEB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Estado WEB ───────────────────────────────────────────────────────────────
   email = '';
-  service = 'Servicio Normal';
+  service = '';
   qrDataUrl = '';
   currentRequestId = '';
   requests: QrRequest[] = [];
@@ -32,15 +32,16 @@ export class HomePage implements OnInit, OnDestroy {
   verifyMsg = '';
   verifySuccess = false;
   isGenerating = false;
+  isClearingHistory = false;
   apiConnected = false;
 
-  // â”€â”€ Estado MÃ“VIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Estado MÓVIL ─────────────────────────────────────────────────────────────
   scannedPin = '';
   scannedService = '';
   scannedEmail = '';
   isScanning = false;
   scanError = '';
-  // Fallback: en browser no hay cÃ¡mara nativa, se puede ingresar el ID manualmente
+  // Fallback: en browser no hay cámara nativa, se puede ingresar el ID manualmente
   manualId = '';
   showManual = false;
 
@@ -78,9 +79,9 @@ export class HomePage implements OnInit, OnDestroy {
     this.stopScannerIfActive();
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
   // WEB METHODS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
 
   switchView(v: 'web' | 'mobile') {
     this.currentView = v;
@@ -93,7 +94,9 @@ export class HomePage implements OnInit, OnDestroy {
     this.pinInput = '';
     this.qrDataUrl = '';
 
-    this.authService.generate(this.email.trim(), this.service).subscribe({
+    const serviceName = this.service.trim() || 'Servicio Normal';
+
+    this.authService.generate(this.email.trim(), serviceName).subscribe({
       next: async (res) => {
         this.currentRequestId = res.id;
         // El QR codifica un enlace de la app con el ID de la solicitud
@@ -135,7 +138,7 @@ export class HomePage implements OnInit, OnDestroy {
     if (!this.currentRequestId || pin.length < 6) return;
     this.authService.verify(this.currentRequestId, pin).subscribe({
       next: () => {
-        this.verifyMsg = 'âœ“ RecuperaciÃ³n aprobada correctamente';
+        this.verifyMsg = '✓ Recuperación aprobada correctamente';
         this.verifySuccess = true;
         this.qrDataUrl = '';
         this.loadRequests();
@@ -151,10 +154,30 @@ export class HomePage implements OnInit, OnDestroy {
     this.authService.revoke(id).subscribe({
       next: () => {
         if (id === this.currentRequestId) {
-          this.currentRequestId = '';
-          this.qrDataUrl = '';
+          this.resetWebRecoveryState();
         }
         this.loadRequests();
+      },
+    });
+  }
+
+  clearHistory() {
+    if (this.requests.length === 0 || this.isClearingHistory) return;
+
+    const confirmed = window.confirm('Esto borrará todos los registros del historial en MongoDB. ¿Deseas continuar?');
+    if (!confirmed) return;
+
+    this.isClearingHistory = true;
+    this.authService.clearRequests().subscribe({
+      next: () => {
+        this.requests = [];
+        this.resetWebRecoveryState();
+        this.isClearingHistory = false;
+      },
+      error: (err) => {
+        this.verifyMsg = err.message || 'No se pudo limpiar el historial';
+        this.verifySuccess = false;
+        this.isClearingHistory = false;
       },
     });
   }
@@ -186,6 +209,14 @@ export class HomePage implements OnInit, OnDestroy {
   private syncRequests(reqs: QrRequest[]) {
     this.requests = reqs;
     this.syncCurrentPinFromRequests();
+  }
+
+  private resetWebRecoveryState() {
+    this.currentRequestId = '';
+    this.qrDataUrl = '';
+    this.pinInput = '';
+    this.verifyMsg = '';
+    this.verifySuccess = false;
   }
 
   private syncCurrentPinFromRequests() {
@@ -239,7 +270,7 @@ export class HomePage implements OnInit, OnDestroy {
     this.showManual = false;
 
     if (!id) {
-      this.scanError = 'QR no valido para esta app. Genera uno nuevo desde el portal.';
+      this.scanError = 'QR no válido para esta app. Genera uno nuevo desde el portal.';
       return;
     }
 
@@ -247,9 +278,9 @@ export class HomePage implements OnInit, OnDestroy {
     this.fetchPinFromId(id);
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
   // MOBILE METHODS
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
 
   async scanQR() {
     if (!this.Scanner) {

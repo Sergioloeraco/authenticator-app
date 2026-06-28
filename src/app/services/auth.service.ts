@@ -56,6 +56,12 @@ export class AuthService {
       .pipe(catchError(this.handleError));
   }
 
+  /** Elimina todos los registros del historial */
+  clearRequests(): Observable<{ success: boolean; deletedCount: number }> {
+    return this.http
+      .delete<{ success: boolean; deletedCount: number }>(`${this.API}/api/requests`)
+      .pipe(catchError(this.handleError));
+  }
   /** Polling del estado de una solicitud */
   getStatus(id: string): Observable<{ status: string }> {
     return this.http

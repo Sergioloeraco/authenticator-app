@@ -122,23 +122,42 @@ ion-content.rainbow-content {
       ion-icon { font-size: 1.6rem; }
     }
 
-    .card-sub {
+    .card-sub,
+    ion-card-subtitle {
       margin: 0 0 2px;
-      color: var(--ion-color-medium);
+      color: #475569;
       font-size: 0.8rem;
+      font-weight: 700;
     }
 
     ion-card-title {
+      color: #111827;
       font-size: 1.25rem;
-      font-weight: 700;
+      font-weight: 800;
       margin: 0;
     }
   }
 }
 
 // ── Formulario ────────────────────────────────────────────────────────────────
-.form-item { --inner-padding-end: 0; }
-.mt-1 { margin-top: 12px; }
+.form-item {
+  --inner-padding-end: 0;
+  --min-height: 72px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+
+  ion-label {
+    margin-bottom: 8px;
+    color: #334155;
+    font-weight: 700;
+  }
+
+  ion-input {
+    --padding-top: 6px;
+    --padding-bottom: 6px;
+  }
+}
+.mt-1 { margin-top: 16px; }
 .mt-2 { margin-top: 16px; }
 
 .generate-btn {
@@ -179,27 +198,42 @@ ion-content.rainbow-content {
 .pin-boxes {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin: 8px 0 18px;
 
   .pin-box {
-    width: 38px;
-    height: 46px;
-    border: 2px solid var(--ion-color-light-shade);
-    border-radius: 8px;
+    width: 48px;
+    height: 58px;
+    border: 2px solid #1f2937;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
-    font-weight: 700;
+    font-size: 1.7rem;
+    font-weight: 800;
+    line-height: 1;
     font-family: 'Courier New', monospace;
-    color: var(--ion-color-dark);
-    background: var(--ion-color-light);
-    transition: border-color 0.15s, background 0.15s;
+    color: transparent;
+    background: #111827;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 18px rgba(17, 24, 39, 0.22);
+    transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.15s;
 
     &.filled {
-      border-color: var(--ion-color-primary);
-      background: rgba(var(--ion-color-primary-rgb), 0.08);
+      border-color: #22c55e;
+      background: #0f172a;
+      color: #4ade80;
+      transform: translateY(-1px);
+      box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.3), 0 10px 22px rgba(34, 197, 94, 0.24);
+    }
+  }
+
+  @media (max-width: 420px) {
+    gap: 6px;
+
+    .pin-box {
+      width: 40px;
+      height: 52px;
+      font-size: 1.45rem;
     }
   }
 }
@@ -242,6 +276,43 @@ ion-content.rainbow-content {
 // ── Lista de solicitudes ──────────────────────────────────────────────────────
 .requests-card ion-card-content { padding: 0 16px 16px; }
 
+.requests-card {
+  ion-card-header.requests-header {
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}
+
+.clear-history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.35);
+  border-radius: 8px;
+  background: rgba(var(--ion-color-danger-rgb), 0.08);
+  color: var(--ion-color-danger);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s, transform 0.15s;
+
+  ion-icon { font-size: 1rem; }
+
+  &:hover:not(:disabled) {
+    background: rgba(var(--ion-color-danger-rgb), 0.14);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+}
+
 .req-row {
   display: flex;
   justify-content: space-between;
@@ -256,9 +327,9 @@ ion-content.rainbow-content {
     flex-direction: column;
     gap: 2px;
 
-    .req-service { font-weight: 700; font-size: 0.95rem; }
-    .req-email   { color: var(--ion-color-medium); font-size: 0.87rem; }
-    .req-date    { color: var(--ion-color-medium-shade); font-size: 0.78rem; }
+    .req-service { color: #1f2937; font-weight: 800; font-size: 0.95rem; }
+    .req-email   { color: #475569; font-size: 0.87rem; font-weight: 600; }
+    .req-date    { color: #64748b; font-size: 0.78rem; font-weight: 600; }
   }
 
   .req-actions {
